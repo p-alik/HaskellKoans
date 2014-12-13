@@ -3,8 +3,10 @@ module ParserCombinators (tests) where
 
 import Test.Hspec (Spec, describe, it)
 import Test.HUnit (assertBool, assertEqual, Assertion)
+import Control.Applicative ((<$>), (<|>),(<*>))
 import qualified Data.Attoparsec.Text as P
-import Data.Text (Text)
+import Data.Char (isLetter)
+import Data.Text (Text,pack)
 
 tests :: Spec
 tests = describe "ParserCombinators" $ do
@@ -30,14 +32,15 @@ assertParse expected (Right answer) =
 testDigitParser :: Spec
 testDigitParser = it "digit parser" $ do
     -- Change parser with the correct parser to use
-    let parser = failParser "digit parser" :: P.Parser Char
+    let parser = P.digit
     let result = P.parseOnly parser "5"
     assertParse '5' result
 
 testDigitsParser :: Spec
 testDigitsParser = it "sequence of digits parser" $ do
     -- Change parser with the correct parser to use
-    let parser = failParser "sequence of digits parser" :: P.Parser String
+    --let parser = P.takeText
+    let parser = P.takeWhile (\c -> c >= '0' && c <= '9')
     let result = P.parseOnly parser "54321"
     assertParse "54321" result
 
@@ -47,7 +50,7 @@ testSymbolParser = it "symbol parser" $ do
     --
     -- Here we say symbol is a sequence of characters that doesn't have
     -- parenthes or spaces.
-    let parser = failParser "symbol parser" :: P.Parser String
+    let parser = P.many1 (P.char '/' <|> P.satisfy isLetter)
     assertParse "ab" $ P.parseOnly parser "ab"
     assertParse "a/b" $ P.parseOnly parser "a/b"
     assertParse "a/b" $ P.parseOnly parser "a/b c"
@@ -58,7 +61,7 @@ testAtomParser :: Spec
 testAtomParser = it "atom parser" $ do
     -- Change parser with the correct parser to use
     --
-    let parser = failParser "atom parser" :: P.Parser Atom
+    let parser =  AInt . read <$> P.many1 P.digit <|> ASym . pack <$> P.many1 (P.char '/' <|> P.satisfy isLetter)
     assertParse (ASym "ab") $ P.parseOnly parser "ab"
     assertParse (ASym "a/b") $ P.parseOnly parser "a/b"
     assertParse (ASym "a/b") $ P.parseOnly parser "a/b c"
